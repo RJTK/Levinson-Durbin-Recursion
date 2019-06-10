@@ -1,4 +1,5 @@
 '''
+Implementation of the Schur Cohn stability test.
 '''
 import numpy as np
 
@@ -83,6 +84,7 @@ def test4():
       r = math.sqrt(stats.uniform.rvs(loc = 0, scale = 1.5))
       theta = stats.uniform.rvs(loc = -np.pi, scale = np.pi)
       zeros.append(cmath.rect(r, theta))
+
     #Should ensure we actually get atleast one unstable root
     r = math.sqrt(stats.uniform.rvs(loc = 1.1, scale = 2))
     theta = stats.uniform.rvs(loc = -np.pi, scale = np.pi)

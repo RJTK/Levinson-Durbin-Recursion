@@ -26,6 +26,20 @@ def lev(r):
     Gamma.append(G) #Save the reflection coefficient sequence
   return a, Gamma, eps
 
+def lev_inv(Gamma, eps):
+  '''
+  The inverse Levinson Durbin recursion.  Given the sequence of
+  Gamma coefficients and the modeling error eps we reproduce the
+  autocorrelation sequence which would have produced the given (Gamma,
+  eps)
+  '''
+  from operator import mul #For product of a list
+  rx = [eps / reduce(mul, Gamma, 1)]
+  a = [1.]
+  for j in range(len(G) - 1):
+    #step up recursion here?
+  return rx
+
 def test1():
   '''simple sanity check'''
   import numpy as np
@@ -40,9 +54,16 @@ def test1():
   return
 
 def test2():
-  return
-
-def test3():
+  '''a second simple tests'''
+  import numpy as np
+  rx = [2., -1., -0.25, 0.125]
+  a, G, eps = lev(rx)
+  assert np.allclose(a, [1.0, 1.0, 7./8, 1./2]), \
+    'TEST2 FAILED TO PRODUCE CORRECT a VECTOR'
+  assert np.allclose(G, [0.5, 0.5, 0.5]), \
+    'TEST2 FAILED TO PRODUCE CORRECT GAMMA VECTOR'
+  assert np.isclose(eps, 2*(3./4)**3), \
+    'TEST2 FAILED TO GET CORRECT MODELING ERROR'
   return
 
 if __name__ == '__main__':
