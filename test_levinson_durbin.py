@@ -37,9 +37,9 @@ class TestUtil(unittest.TestCase):
         return
 
     def test_block_toep004(self):
-        C = [self.rand_mat(),
-             self.rand_mat()]
-        R = [C[0], self.rand_mat()]
+        C = np.array([self.rand_mat(),
+                      self.rand_mat()])
+        R = np.array([C[0], self.rand_mat()])
         T = block_toeplitz(C, R)
 
         np.testing.assert_array_equal(T[:2, :2], C[0])
@@ -63,7 +63,8 @@ class TestLevinsonDurbin(unittest.TestCase):
         a, G, eps = lev_durb(rx)
         np.testing.assert_almost_equal(a, a_exp)
         np.testing.assert_almost_equal(G, G_exp)
-        np.testing.assert_almost_equal(eps, eps_exp)
+        np.testing.assert_almost_equal(eps[-1], eps_exp)
+        np.testing.assert_array_less(np.diff(eps), np.zeros(3))
         return
 
     def basic_test002(self):
@@ -75,7 +76,8 @@ class TestLevinsonDurbin(unittest.TestCase):
         a, G, eps = lev_durb(rx)
         np.testing.assert_almost_equal(a, a_exp)
         np.testing.assert_almost_equal(G, G_exp)
-        np.testing.assert_almost_equal(eps, eps_exp)
+        np.testing.assert_almost_equal(eps[-1], eps_exp)
+        np.testing.assert_array_less(np.diff(eps), np.zeros(3))
         return
 
     def test_solve_toep001(self):
@@ -91,7 +93,7 @@ class TestLevinsonDurbin(unittest.TestCase):
         b_solve = linalg.solve(R, u)
         b_solve_toeplitz = linalg.solve_toeplitz(r, u)
         b_lev_durb, G, eps = lev_durb(r)
-        b_lev_durb = b_lev_durb / eps
+        b_lev_durb = b_lev_durb / eps[-1]
 
         np.testing.assert_almost_equal(
             b_solve, b_solve_toeplitz, decimal=7,
@@ -99,9 +101,10 @@ class TestLevinsonDurbin(unittest.TestCase):
 
         np.testing.assert_almost_equal(
             b_solve_toeplitz, b_lev_durb, decimal=7)
-        self.assertTrue(eps >= 0, "eps < 0!")
+        self.assertTrue(eps[-1] >= 0, "eps < 0!")
         np.testing.assert_array_less(np.abs(G), np.ones_like(G))
         np.testing.assert_almost_equal(1.0, np.sum(b_lev_durb * r))
+        np.testing.assert_array_less(np.diff(eps), np.zeros(p - 1))
         return
 
     def test_solve_toep002(self):
@@ -117,7 +120,7 @@ class TestLevinsonDurbin(unittest.TestCase):
         b_solve = linalg.solve(R, u)
         b_solve_toeplitz = linalg.solve_toeplitz(r, u)
         b_lev_durb, G, eps = lev_durb(r)
-        b_lev_durb = b_lev_durb / eps
+        b_lev_durb = b_lev_durb / eps[-1]
 
         np.testing.assert_almost_equal(
             b_solve, b_solve_toeplitz, decimal=7,
@@ -125,15 +128,18 @@ class TestLevinsonDurbin(unittest.TestCase):
 
         np.testing.assert_almost_equal(
             b_solve_toeplitz, b_lev_durb, decimal=7)
-        self.assertTrue(eps >= 0, "eps < 0!")
+        self.assertTrue(eps[-1] >= 0, "eps < 0!")
         np.testing.assert_array_less(np.abs(G), np.ones_like(G))
         np.testing.assert_almost_equal(1.0, np.sum(b_lev_durb * r))
+        np.testing.assert_array_less(np.diff(eps), np.zeros(p - 1))
         return
 
     def test_solve_toep003(self):
         """large random system"""
-        T = 5000
-        p = 1000
+        # This isn't that big but my method to generate cov
+        # sequences is really slow.
+        T = 2000
+        p = 500
 
         r = rand_cov_seq(T, p)
         R = linalg.toeplitz(r)
@@ -144,7 +150,7 @@ class TestLevinsonDurbin(unittest.TestCase):
         b_solve = linalg.solve(R, u)
         b_solve_toeplitz = linalg.solve_toeplitz(r, u)
         b_lev_durb, G, eps = lev_durb(r)
-        b_lev_durb = b_lev_durb / eps
+        b_lev_durb = b_lev_durb / eps[-1]
 
         np.testing.assert_almost_equal(
             b_solve, b_solve_toeplitz, decimal=7,
@@ -152,9 +158,10 @@ class TestLevinsonDurbin(unittest.TestCase):
 
         np.testing.assert_almost_equal(
             b_solve_toeplitz, b_lev_durb, decimal=7)
-        self.assertTrue(eps >= 0, "eps < 0!")
+        self.assertTrue(eps[-1] >= 0, "eps < 0!")
         np.testing.assert_array_less(np.abs(G), np.ones_like(G))
         np.testing.assert_almost_equal(1.0, np.sum(b_lev_durb * r))
+        np.testing.assert_array_less(np.diff(eps), np.zeros(p - 1))
         return
 
     def test_solve_indefinite(self):
@@ -169,7 +176,7 @@ class TestLevinsonDurbin(unittest.TestCase):
         b_solve = linalg.solve(R, u)
         b_solve_toeplitz = linalg.solve_toeplitz(r, u)
         b_lev_durb, G, eps = lev_durb(r)
-        b_lev_durb = b_lev_durb / eps
+        b_lev_durb = b_lev_durb / eps[-1]
 
         np.testing.assert_almost_equal(
             b_solve, b_solve_toeplitz, decimal=7,
@@ -181,6 +188,21 @@ class TestLevinsonDurbin(unittest.TestCase):
         return
 
     def test_whittle_block001():
+        # TODO: Not even sure this is a correct test.
+        T = 12
+        p = 3
+        n = 2
+        r = rand_cov_seq(T, p, n)
+        R = block_toeplitz(r)
+
+        U = np.zeros((n * p, n))
+        U[:n, :n] = np.eye(n)
+
+        b_solve = linalg.solve(R, U)
+        b_whittle, G, S = whittle_lev_durb(r)
+        b_whittle = linalg.solve(S[-1], b_whittle)
+
+        np.testing.assert_almost_equal(b_solve, b_whittle)
         return
 
 
@@ -200,10 +222,17 @@ class TestcLevinsonDurbin(unittest.TestCase):
 
 def rand_cov_seq(T, p, n=1):
     x = np.random.normal(size=(T, n))
-    r = np.array(
-        [np.sum([x[t] @ x[t - tau].T for t in range(p, T)])
-         for tau in range(p)])
-    R = linalg.toeplitz(r)
+    if n > 1:
+        r = np.array(
+            [np.sum([x[t][:, None] @ x[t - tau][:, None].T
+                     for t in range(p, T)], axis=0)
+             for tau in range(p)]) / T
+    else:
+        r = np.array([np.sum([x[t] * x[t - tau]
+                              for t in range(p, T)])
+                      for tau in range(p)]) / T
+
+    R = block_toeplitz(r)
     try:
         linalg.cholesky(R)
     except linalg.LinAlgError:

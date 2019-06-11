@@ -7,10 +7,6 @@ import numpy as np
 import numba
 
 
-# TODO: It would be useful to "break-out" the inner portion of
-# TODO: the loop so that we can obtain all the solutions of order
-# TODO: up to p = len(r) - 1.  This would be highly desirable for
-# TODO: efficient model order selection.
 @numba.jit(nopython=True, cache=False)
 def lev_durb(r):
     """
@@ -23,14 +19,16 @@ def lev_durb(r):
         having autocovariance r.
       - G (np.array): Length p array of reflection coefficients.
         It is guaranteed that |G[tau]| <= 1.
-      - eps (float): The error achieved by the all-pole model.  eps is
-        guaranteed to satisfy eps >= 0.
+      - eps (np.array): The sequence of errors achieved by all-pole
+        models of progressively larger order.  eps is guaranteed to
+        satisfy eps >= 0.
 
     NOTE: We don't handle complex data
 
     We get a solution to the system R @ a = eps * e1 where R = toep(r)
     and e1 is the first canonical basis vector.  The variables are a[1:]
-    and eps.
+    and eps.  NOTE: For epsilon we are returning a sequence of errors for
+    progressively larger systems.
 
     One of the key advantages of this algorithm is that the resulting
     filter is guaranteed to be stable, and the prediction error is directly
@@ -53,14 +51,15 @@ def lev_durb(r):
     a = np.zeros(p + 1)
     a[0] = 1.0
     G = np.zeros(p)
-    eps = r[0]
+    eps = np.zeros(p + 1)
+    eps[0] = r[0]
 
     for tau in range(p):
         # Compute reflection coefficient
         conv = r[tau + 1]
         for s in range(1, tau + 1):
             conv = conv + a[s] * r[tau - s + 1]
-        G[tau] = -conv / eps
+        G[tau] = -conv / eps[tau]
 
         # Update 'a' vector
         a_cpy = np.copy(a)
@@ -68,7 +67,7 @@ def lev_durb(r):
             a_cpy[s] = a[s] + G[tau] * np.conj(a[tau - s + 1])
         a = a_cpy
         a[tau + 1] = G[tau]
-        eps = eps * (1 - np.abs(G[tau])**2)
+        eps[tau + 1] = eps[tau] * (1 - np.abs(G[tau])**2)
     return a, G, eps
 
 
