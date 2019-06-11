@@ -3,7 +3,6 @@ import numpy as np
 import scipy.linalg as linalg
 
 from levinson import lev_durb, whittle_lev_durb
-from clevinson import _lev_durb
 from util import (block_toeplitz, system_rho,
                   is_stable)
 
@@ -291,6 +290,7 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
 
 
 class TestcLevinsonDurbin(unittest.TestCase):
+    @unittest.skip("Not using Cython")
     def basic_test001(self):
         rx = np.array([1.0, 0.5, 0.5, 0.25])
         a_exp = np.array([1.0, -3. / 8, -3. / 8, 1. / 8])

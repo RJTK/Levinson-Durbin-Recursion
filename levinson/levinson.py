@@ -142,3 +142,17 @@ def whittle_lev_durb(R):
         A = np.copy(A_cpy)
         A_bar = np.copy(A_bar_cpy)
     return A, Delta, V
+
+
+def compute_covariance(X, p_max):
+    """
+    Estimates covariances of X and returns an n x n x p_max array.
+    The covariance sequence is guaranteed to be positive semidefinite.
+    """
+    T = X.shape[0]
+    R = np.stack(
+        [X.T @ X / T] +
+        [X[tau:, :].T @ X[: -tau, :] / T
+         for tau in range(1, p + 1)],
+         axis=0)
+    return R
