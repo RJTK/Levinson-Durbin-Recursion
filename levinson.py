@@ -71,7 +71,7 @@ def lev_durb(r):
     return a, G, eps
 
 
-@numba.jit(nopython=True, cache=True)
+# @numba.jit(nopython=True, cache=True)
 def whittle_lev_durb(R):
     """
     Comsumes a length p + 1 vector R = [R(0), ..., R(p)] of n x n
@@ -112,6 +112,15 @@ def whittle_lev_durb(R):
         Delta_bar = np.zeros((n, n))  # Backward reflection coefficients
         V_bar = np.zeros((n, n))  # Backward error variance
 
+        # TODO: ----------------- Remove this --------------------
+        if tau >= 1:
+            from test_levinson_durbin import assert_solves_yule_walker
+            assert_solves_yule_walker(A[:tau + 1], R[:tau + 1])
+            # assert_solves_yule_walker(A_bar[:tau + 1],
+            #                           [RT.T for RT in R[:tau + 1]])
+
+        # TODO: ----------------- Remove this --------------------
+
         for s in range(tau + 1):
             V[tau] = V[tau] + A[s] @ R[s].T
             Delta[tau] = Delta[tau] + A[s] @ R[tau - s + 1]
@@ -126,10 +135,10 @@ def whittle_lev_durb(R):
         A_cpy[tau + 1] = -Delta[tau] @ np.linalg.inv(V_bar)
         A_bar_cpy[tau + 1] = -Delta_bar[tau] @ np.linalg.inv(V[tau])
 
-        for s in range(tau + 1):
+        for s in range(1, tau + 1):
             A_cpy[s] = A[s] + A_cpy[tau + 1] @ A_bar[tau - s + 1]
             A_bar_cpy[s] = A_bar[s] + A_bar_cpy[tau + 1] @ A[tau - s + 1]
 
-        A = A_cpy
-        A_bar = A_bar_cpy
+        A = np.copy(A_cpy)
+        A_bar = np.copy(A_bar_cpy)
     return A, Delta, V

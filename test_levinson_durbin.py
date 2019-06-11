@@ -290,7 +290,6 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
         return
 
 
-
 class TestcLevinsonDurbin(unittest.TestCase):
     def basic_test001(self):
         rx = np.array([1.0, 0.5, 0.5, 0.25])
@@ -311,11 +310,11 @@ def rand_cov_seq(T, p, n=1):
         r = np.array(
             [np.sum([x[t][:, None] @ x[t - tau][:, None].T
                      for t in range(tau, T)], axis=0)
-             for tau in range(p)])
+             for tau in range(p)]) / T
     else:
         r = np.array([np.sum([x[t] * x[t - tau]
                               for t in range(tau, T)])
-                      for tau in range(p)])
+                      for tau in range(p)]) / T
 
     R = block_toeplitz(r)
     try:
@@ -331,12 +330,13 @@ def assert_solves_yule_walker(A, R):
     """
     p = len(A)
     n = A.shape[1]
-    for tau in range(1, p):
+    for tau in range(1, p + 1):
         K_check = np.zeros((n, n))
         for s in range(p):
-            if tau - s >= 0:
-                K_check += A[tau] @ R[tau - s]
+            print(tau - s - 1, s)
+            if tau - s - 1 >= 0:
+                K_check += A[s] @ R[tau - s - 1]
             else:
-                K_check += A[tau] @ R[s - tau].T
+                K_check += A[s] @ R[s - tau + 1].T
         np.testing.assert_almost_equal(K_check, np.zeros((n, n)))
     return
