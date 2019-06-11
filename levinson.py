@@ -97,15 +97,39 @@ def whittle_lev_durb(R):
     """
     p = len(R) - 1
     n = R[0].shape[0]
-    A = [np.zeros((n, n)) for tau in range(p + 1)]  # Forward coeffs
+
+    A = np.zeros((p + 1, n, n))
     A_bar = np.copy(A)  # Backward coeffs
 
-    V = np.zeros((n, n))  # Forward error variance
-    V_bar = np.copy(V)  # Backward error variance
+    A[0] = np.eye(n)
+    A_bar[0] = np.eye(n)
 
-    V[0] = R[0]
-    V_bar[0] = R[0]
+    V = np.zeros((p + 1, n, n))  # Forward error variance
+    Delta = np.zeros((p + 1, n, n))  # Reflection coefficients
 
-    for tau in range(p):
-        pass
-    return
+    for tau in range(p + 1):
+        Delta[tau] = np.zeros((n, n))  # Forward reflection coefficients
+        Delta_bar = np.zeros((n, n))  # Backward reflection coefficients
+        V_bar = np.zeros((n, n))  # Backward error variance
+
+        for s in range(tau + 1):
+            V[tau] = V[tau] + A[s] @ R[s].T
+            Delta[tau] = Delta[tau] + A[s] @ R[tau - s + 1]
+
+            V_bar = V_bar + A_bar[s] @ R[s]
+            Delta_bar = Delta_bar + A_bar[s] @ R[tau - s + 1].T
+
+        A_cpy = np.copy(A)
+        A_bar_cpy = np.copy(A_bar)
+
+        # TODO: Use solve and the Hermitian PSD property of V
+        A_cpy[tau + 1] = -Delta[tau] @ np.linalg.inv(V_bar)
+        A_bar_cpy[tau + 1] = -Delta_bar[tau] @ np.linalg.inv(V[tau])
+
+        for s in range(tau + 1):
+            A_cpy[s] = A[s] + A_cpy[tau + 1] @ A_bar[tau - s + 1]
+            A_bar_cpy[s] = A_bar[s] + A_bar_cpy[tau + 1] @ A[tau - s + 1]
+
+        A = A_cpy
+        A_bar = A_bar_cpy
+    return A, Delta, V

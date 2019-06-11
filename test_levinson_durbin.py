@@ -2,9 +2,10 @@ import unittest
 import numpy as np
 import scipy.linalg as linalg
 
-from levinson import lev_durb
+from levinson import lev_durb, whittle_lev_durb
 from clevinson import _lev_durb
-from util import block_toeplitz
+from util import (block_toeplitz, system_rho,
+                  is_stable)
 
 
 class TestUtil(unittest.TestCase):
@@ -47,6 +48,27 @@ class TestUtil(unittest.TestCase):
         np.testing.assert_array_equal(T[2:, :2], C[1])
         np.testing.assert_array_equal(T[:2, 2:], R[1])
         return
+
+    def test_cov_seq001(self):
+        """Univariate Covariance Sequences"""
+        # Ensure we are actually producing PSD covariances
+        p = 15
+        try:
+            for _ in range(1000):
+                rand_cov_seq(p + 1, p, 1)
+        except linalg.LinAlgError:
+            self.fail("Non-PSD Matrix!")
+        return
+
+    def test_cov_seq002(self):
+        """Multivariate Covariance Sequences"""
+        n = 5
+        p = 15
+        try:
+            for _ in range(500):
+                rand_cov_seq(p * n + 1, p, n)
+        except linalg.LinAlgError:
+            self.fail("Non-PSD Matrix!")
 
 
 class TestLevinsonDurbin(unittest.TestCase):
@@ -187,8 +209,13 @@ class TestLevinsonDurbin(unittest.TestCase):
         np.testing.assert_almost_equal(1.0, np.sum(b_lev_durb * r))
         return
 
-    def test_whittle_block001():
-        # TODO: Not even sure this is a correct test.
+
+class TestBlockLevinsonDurbin(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(0)
+        return
+
+    def _make_whittle_simple_test(self):
         T = 12
         p = 3
         n = 2
@@ -199,11 +226,69 @@ class TestLevinsonDurbin(unittest.TestCase):
         U[:n, :n] = np.eye(n)
 
         b_solve = linalg.solve(R, U)
-        b_whittle, G, S = whittle_lev_durb(r)
-        b_whittle = linalg.solve(S[-1], b_whittle)
+        A, G, S = whittle_lev_durb(r)
+        assert len(A) == p
+        assert len(G) == p
+        assert len(S) == p
 
-        np.testing.assert_almost_equal(b_solve, b_whittle)
+        A_normed = [linalg.solve(S[-1], A_tau) for A_tau in A]
+        A_normed = np.vstack(A_normed)
+        B = [-A_tau for A_tau in A[1:]]
+        return r, A, A_normed, b_solve, B, S
+
+    def test_whittle_block001(self):
+        """stability"""
+        for _ in range(50):
+            _, _, _, _, B, _ = self._make_whittle_simple_test()
+            self.assertTrue(is_stable(B),
+                            "System not stable!")
         return
+
+    def test_whittle_block002(self):
+        """solves YW"""
+        for _ in range(50):
+            r, A, _, _, _, _ = self._make_whittle_simple_test()
+            assert_solves_yule_walker(A, r)
+        return
+
+    def test_whittle_block003(self):
+        """Error PSD"""
+        for _ in range(50):
+            _, _, _, _, _, S = self._make_whittle_simple_test()
+            self._assert_psd_sequence(S)
+        return
+
+    def test_whittle_block004(self):
+        """Decreasing Error"""
+        for _ in range(50):
+            _, _, _, _, _, S = self._make_whittle_simple_test()
+            self._assert_psd_decreasing_sequence(S)
+        return
+
+    def test_whittle_block005(self):
+        """Toeplitz Solve"""
+        _, _, A_normed, b_solve, _, _ = self._make_whittle_simple_test()
+        np.testing.assert_almost_equal(A_normed, b_solve)
+        return
+
+    def _assert_psd_sequence(self, S):
+        try:
+            for tau in range(len(S)):
+                linalg.cholesky(S[tau])
+        except linalg.LinAlgError:
+            self.fail("S[{}] is not positive definite!"
+                      "".format(tau))
+        return
+
+    def _assert_psd_decreasing_sequence(self, S):
+        try:
+            for tau in range(len(S) - 1):
+                linalg.cholesky(S[tau] - S[tau + 1])
+        except linalg.LinAlgError:
+            self.fail("S[{}] - S[{}] is not positive definite!"
+                      "".format(tau, tau + 1))
+        return
+
 
 
 class TestcLevinsonDurbin(unittest.TestCase):
@@ -225,12 +310,12 @@ def rand_cov_seq(T, p, n=1):
     if n > 1:
         r = np.array(
             [np.sum([x[t][:, None] @ x[t - tau][:, None].T
-                     for t in range(p, T)], axis=0)
-             for tau in range(p)]) / T
+                     for t in range(tau, T)], axis=0)
+             for tau in range(p)])
     else:
         r = np.array([np.sum([x[t] * x[t - tau]
-                              for t in range(p, T)])
-                      for tau in range(p)]) / T
+                              for t in range(tau, T)])
+                      for tau in range(p)])
 
     R = block_toeplitz(r)
     try:
@@ -238,3 +323,20 @@ def rand_cov_seq(T, p, n=1):
     except linalg.LinAlgError:
         raise AssertionError("Sequence generated is not PSD!")
     return r
+
+
+def assert_solves_yule_walker(A, R):
+    """
+    Check sum_{tau = 0}^p A[tau] @ R[s - tau] = 0 for each s = 1 to p
+    """
+    p = len(A)
+    n = A.shape[1]
+    for tau in range(1, p):
+        K_check = np.zeros((n, n))
+        for s in range(p):
+            if tau - s >= 0:
+                K_check += A[tau] @ R[tau - s]
+            else:
+                K_check += A[tau] @ R[s - tau].T
+        np.testing.assert_almost_equal(K_check, np.zeros((n, n)))
+    return
