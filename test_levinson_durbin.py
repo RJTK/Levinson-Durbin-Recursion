@@ -3,6 +3,7 @@ import numpy as np
 import scipy.linalg as linalg
 
 from levinson import lev_durb
+from clevinson import _lev_durb
 
 
 class TestLevinsonDurbin(unittest.TestCase):
@@ -111,6 +112,20 @@ class TestLevinsonDurbin(unittest.TestCase):
         self.assertTrue(eps >= 0, "eps < 0!")
         np.testing.assert_array_less(np.abs(G), np.ones_like(G))
         np.testing.assert_almost_equal(1.0, np.sum(b_lev_durb * r))
+        return
+
+
+class TestcLevinsonDurbin(unittest.TestCase):
+    def basic_test001(self):
+        rx = np.array([1.0, 0.5, 0.5, 0.25])
+        a_exp = np.array([1.0, -3. / 8, -3. / 8, 1. / 8])
+        G_exp = np.array([-1. / 2, -1. / 3, 1. / 8])
+        eps_exp = 21. / 32
+
+        a, G, eps = _lev_durb(rx)
+        np.testing.assert_almost_equal(a, a_exp)
+        np.testing.assert_almost_equal(G, G_exp)
+        np.testing.assert_almost_equal(eps, eps_exp)
         return
 
 
