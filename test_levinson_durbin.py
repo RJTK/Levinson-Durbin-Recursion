@@ -4,6 +4,49 @@ import scipy.linalg as linalg
 
 from levinson import lev_durb
 from clevinson import _lev_durb
+from util import block_toeplitz
+
+
+class TestUtil(unittest.TestCase):
+    rand_mat = lambda s: np.random.normal(size=(2, 2))
+
+    def test_block_toep001(self):
+        c = [-1, 2, 3, 8]
+        Rb = block_toeplitz(c)
+        Rs = linalg.toeplitz(c)
+        np.testing.assert_array_equal(Rb, Rs)
+        return
+
+    def test_block_toep002(self):
+        c = [-1, 2, 3, 8]
+        r = [-1, -2.2, -3.8, -8.9]
+        Rb = block_toeplitz(c, r)
+        Rs = linalg.toeplitz(c, r)
+        np.testing.assert_array_equal(Rb, Rs)
+        return
+
+    def test_block_toep003(self):
+        C = [self.rand_mat(),
+             self.rand_mat() + 1j * self.rand_mat()]
+        T = block_toeplitz(C)
+
+        np.testing.assert_array_equal(T[:2, :2], C[0])
+        np.testing.assert_array_equal(T[2:, 2:], C[0])
+        np.testing.assert_array_equal(T[2:, :2], C[1])
+        np.testing.assert_array_equal(T[:2, 2:], C[1].T.conj())
+        return
+
+    def test_block_toep004(self):
+        C = [self.rand_mat(),
+             self.rand_mat()]
+        R = [C[0], self.rand_mat()]
+        T = block_toeplitz(C, R)
+
+        np.testing.assert_array_equal(T[:2, :2], C[0])
+        np.testing.assert_array_equal(T[2:, 2:], C[0])
+        np.testing.assert_array_equal(T[2:, :2], C[1])
+        np.testing.assert_array_equal(T[:2, 2:], R[1])
+        return
 
 
 class TestLevinsonDurbin(unittest.TestCase):
@@ -137,6 +180,9 @@ class TestLevinsonDurbin(unittest.TestCase):
         np.testing.assert_almost_equal(1.0, np.sum(b_lev_durb * r))
         return
 
+    def test_whittle_block001():
+        return
+
 
 class TestcLevinsonDurbin(unittest.TestCase):
     def basic_test001(self):
@@ -152,10 +198,10 @@ class TestcLevinsonDurbin(unittest.TestCase):
         return
 
 
-def rand_cov_seq(T, p):
-    x = np.random.normal(size=T)
+def rand_cov_seq(T, p, n=1):
+    x = np.random.normal(size=(T, n))
     r = np.array(
-        [np.sum([x[t] * x[t - tau] for t in range(p, T)])
+        [np.sum([x[t] @ x[t - tau].T for t in range(p, T)])
          for tau in range(p)])
     R = linalg.toeplitz(r)
     try:

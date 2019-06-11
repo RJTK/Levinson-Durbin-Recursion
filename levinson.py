@@ -26,6 +26,8 @@ def lev_durb(r):
       - eps (float): The error achieved by the all-pole model.  eps is
         guaranteed to satisfy eps >= 0.
 
+    NOTE: We don't handle complex data
+
     We get a solution to the system R @ a = eps * e1 where R = toep(r)
     and e1 is the first canonical basis vector.  The variables are a[1:]
     and eps.
