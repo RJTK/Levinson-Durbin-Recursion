@@ -114,6 +114,29 @@ class TestLevinsonDurbin(unittest.TestCase):
         np.testing.assert_almost_equal(1.0, np.sum(b_lev_durb * r))
         return
 
+    def test_solve_indefinite(self):
+        # We can still solve systems with indefinite inputs
+        T = p = 1000
+        r = np.random.normal(size=T)
+        R = linalg.toeplitz(r)
+
+        u = np.zeros(p)
+        u[0] = 1.0
+
+        b_solve = linalg.solve(R, u)
+        b_solve_toeplitz = linalg.solve_toeplitz(r, u)
+        b_lev_durb, G, eps = lev_durb(r)
+        b_lev_durb = b_lev_durb / eps
+
+        np.testing.assert_almost_equal(
+            b_solve, b_solve_toeplitz, decimal=7,
+            err_msg="scipy.linalg solve and solve_toeplitz don't match!")
+
+        np.testing.assert_almost_equal(
+            b_solve_toeplitz, b_lev_durb, decimal=7)
+        np.testing.assert_almost_equal(1.0, np.sum(b_lev_durb * r))
+        return
+
 
 class TestcLevinsonDurbin(unittest.TestCase):
     def basic_test001(self):
