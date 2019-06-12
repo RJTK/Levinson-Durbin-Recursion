@@ -274,11 +274,11 @@ Given a collection of data, there are a variety of methods to choose
 the filter order $p$.  For example, the Bayesian Information Criteria
 (BIC) provides a ``meta-optimization'' objective which trades off
 between error reduction and model complexity.  Choosing $p$ by the
-BIC criterion dictates that we maximize over $p$ the following:
+BIC criterion dictates that we minimize over $p$ the following:
 
 \begin{equation}
   \label{eqn:bic}
-    BIC(p) = -(T - p - 1) \ln \tr \Sigma_p - n^2p\ln T.\\
+    BIC(p) = T \ln \tr \Sigma_p + n^2p\ln T.\\
 \end{equation}
 
 This can be carried out by a simple direct search on each model order
