@@ -222,7 +222,7 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
         p = 3
         n = 2
         r = rand_cov_seq(T, p, n)
-        R = block_toeplitz(r)
+        R = block_toeplitz([r[k].T for k in range(p)])
 
         U = np.zeros((n * p, n))
         U[:n, :n] = np.eye(n)
@@ -230,10 +230,9 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
         b_solve = linalg.solve(R, U)
         A, G, S = whittle_lev_durb(r)
         assert len(A) == p
-        assert len(G) == p
         assert len(S) == p
 
-        A_normed = [linalg.inv(S[-1]) @ A_tau for A_tau in A]
+        A_normed = [A_tau.T @ linalg.inv(S[-1]) for A_tau in A]
         A_normed = np.vstack(A_normed)
         B = [-A_tau for A_tau in A[1:]]
         return r, A, A_normed, b_solve, B, S
@@ -249,8 +248,10 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
     def test_whittle_block002(self):
         """solves YW"""
         for _ in range(50):
-            r, A, _, _, _, _ = self._make_whittle_simple_test()
+            r, A, _, _, _, S = self._make_whittle_simple_test()
             assert_solves_yule_walker(A, r)
+            YW = yule_walker(A, r)
+            np.testing.assert_almost_equal(YW[0], S[-1])
         return
 
     def test_whittle_block003(self):

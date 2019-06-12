@@ -114,18 +114,18 @@ def whittle_lev_durb(R):
     Sigma_bar = R[0]
 
     for k in range(p):
-        Gamma[k] = np.zeros((n, n))
+        Gamma[k + 1] = np.zeros((n, n))
         Gamma_bar = np.zeros((n, n))
 
         for tau in range(k + 1):
-            Gamma[k] = Gamma[k] + A[tau] @ R[k - tau + 1]
+            Gamma[k + 1] = Gamma[k + 1] + A[tau] @ R[k - tau + 1]
             Gamma_bar = Gamma_bar + A_bar[tau] @ R[k - tau + 1].T
 
         A_cpy = np.copy(A)
         A_bar_cpy = np.copy(A_bar)
 
         # TODO: Use cholesky and cho_solve
-        A_cpy[k + 1] = -Gamma[k] @ linalg.inv(Sigma_bar)
+        A_cpy[k + 1] = -Gamma[k + 1] @ linalg.inv(Sigma_bar)
         A_bar_cpy[k + 1] = -Gamma_bar @ linalg.inv(Sigma[k])
 
         for tau in range(1, k + 1):
@@ -136,7 +136,7 @@ def whittle_lev_durb(R):
         A_bar = np.copy(A_bar_cpy)
 
         Sigma[k + 1] = Sigma[k] + A[k + 1] @ Gamma_bar
-        Sigma_bar = Sigma_bar + A_bar[k + 1] @ Gamma[k]
+        Sigma_bar = Sigma_bar + A_bar[k + 1] @ Gamma[k + 1]
 
     return A, Gamma, Sigma
 

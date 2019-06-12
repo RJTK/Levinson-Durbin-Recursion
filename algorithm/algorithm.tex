@@ -82,14 +82,15 @@ block-toeplitz in the multivariate case) system\footnote{The symbol
   $\otimes$ indicates the Kronecker product}
 
 \begin{equation}
-  \mathbf{a}^\T \mathbf{R} = e_1^\T \otimes \Sigma_v,
+  \mathbf{R} \mathbf{A} = e_1 \otimes \Sigma_v,
 \end{equation}
 
-where $\mathbf{a} = [I\ A(1)\ \cdots\ A(p)]$ and $\mathbf{R}$ is a
-block-toeplitz matrix consisting of blocks
-$[\mathbf{R}]_{s\tau} = R(s - \tau)$, and
-$e_1^\T \otimes \Sigma_v = [\Sigma_v\ 0\ \cdots\ 0]$.  It is critical
-to notice that the variables in this equation are $A(1), \ldots, A(p)$
+where $\mathbf{A} = [I\ A(1)^\T\ \cdots\ A(p)^\T]^\T$ and $\mathbf{R}$
+is a (symmetric) block-toeplitz matrix consisting of
+blocks\footnote{One must keep careful track of transposes.}
+$[\mathbf{R}]_{s\tau} = R(s - \tau)^\T$, and
+$e_1 \otimes \Sigma_v = [\Sigma_v\ 0\ \cdots\ 0]$.  It is critical to
+notice that the variables in this equation are $A(1), \ldots, A(p)$
 \textit{and} $\Sigma_v$, so it is not written in the usual
 ``$Ax = b$'' format, but is still a linear equation.  In the
 unidimensional case we can write
