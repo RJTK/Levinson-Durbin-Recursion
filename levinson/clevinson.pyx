@@ -1,3 +1,5 @@
+#!python
+#cython: language_level=3
 """
 Cython implementation of levinson-durbin recursion.  This is
 dramatically slower than the numba version, probably because
