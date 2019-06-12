@@ -2,7 +2,14 @@ from numpy import get_include as np_get_include
 from distutils.core import setup
 from Cython.Build import cythonize
 
+_VERSION = "0.1.0"
+
+with open("README", "r") as readme:
+    long_desc = readme.read()
+
+
 setup(
+    version=_VERSION,
     name="whittle-levinson-durbin-recursion",
     ext_modules=cythonize("levinson/clevinson.pyx"),
     include_dirs=np_get_include(),
@@ -11,8 +18,8 @@ setup(
     description=("Implementations of the Levinson-Durbin algorithm and "
                  "Whittle's multivariate (block-toeplitz) version for "
                  "estimating VAR(p) models"),
+    long_description=long_desc,
     url="https://github.com/RJTK/Levinson-Durbin-Recursion",
-    version="0.1.0",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
