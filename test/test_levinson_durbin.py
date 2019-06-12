@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import scipy.linalg as linalg
 
-from levinson import lev_durb, whittle_lev_durb
+from levinson import (lev_durb, whittle_lev_durb, yule_walker)
 try:
     from .util import (block_toeplitz, system_rho,
                        is_stable)
@@ -233,7 +233,7 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
         assert len(G) == p
         assert len(S) == p
 
-        A_normed = [linalg.solve(S[-1], A_tau) for A_tau in A]
+        A_normed = [linalg.inv(S[-1]) @ A_tau for A_tau in A]
         A_normed = np.vstack(A_normed)
         B = [-A_tau for A_tau in A[1:]]
         return r, A, A_normed, b_solve, B, S
@@ -327,3 +327,11 @@ def rand_cov_seq(T, p, n=1):
     return r
 
 
+def assert_solves_yule_walker(A, r):
+    p = len(A) - 1
+    n = A.shape[1]
+
+    YW = yule_walker(A, r)
+    for k in range(1, p + 1):
+        np.testing.assert_almost_equal(YW[k], np.zeros((n, n)))
+    return

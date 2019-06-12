@@ -191,7 +191,11 @@ properties associated to Algorithm \ref{alg:levinson_durbin}:
 \end{enumerate}
 
 \subsection{Whittle's Generalization}
-Whittle \cite{whittle_generalized_levinson_durbin} generalized Algorithm \ref{alg:levinson_durbin} to the multivariate case.  This generalization is non-trivial and requires both a \textit{forwards} set of coefficients $A(\tau)$, but also a \textit{backwards} set of coefficients $\bar{A}(\tau)$ corresponding to the anti-causal system
+Whittle \cite{whittle_generalized_levinson_durbin} generalized
+Algorithm \ref{alg:levinson_durbin} to the multivariate case.  This
+generalization is non-trivial and requires both a \textit{forwards}
+set of coefficients $A(\tau)$, but also a \textit{backwards} set of
+coefficients $\bar{A}(\tau)$ corresponding to the anti-causal system
 
 \begin{equation}
   \sum_{\tau = 0}^p\bar{A}(\tau)x(t + \tau) = \bar{v}_t.
@@ -218,6 +222,7 @@ sequence $\Sigma_0, \ldots, \Sigma_p$ of error variance matrices where
 
 Keeping in mind that $R(-\tau) = R(\tau)^{\mathsf{H}}$, we have
 
+\todo{Improve step for $\Sigma_{k + 1}$}
 \begin{algorithm}
   \SetKwInOut{Input}{input}
   \SetKwInOut{Output}{output}
@@ -264,4 +269,8 @@ Keeping in mind that $R(-\tau) = R(\tau)^{\mathsf{H}}$, we have
 
   \Return{$\big(\mathbf{B}_1, \ldots, \mathbf{B}_p\big)$, $(\Sigma_0, \ldots, \Sigma_p)$}
 \end{algorithm}
+
+\section{Efficient Model Order Selectio}
+\todo{BIC Criteria}
+\todo{Implementation via WLD}
 \end{document}

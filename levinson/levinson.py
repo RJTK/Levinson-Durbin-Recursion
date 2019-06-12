@@ -5,6 +5,7 @@ particularly the Block Toeplitz versions of Whittle and Akaike.
 
 import numpy as np
 import numba
+from scipy import linalg
 
 
 @numba.jit(nopython=True, cache=False)
@@ -95,6 +96,7 @@ def whittle_lev_durb(R):
     stability property of the scalar version, i.e. det |A(z)| has it's
     zeros within the unit circle.
     """
+    # import pdb; pdb.set_trace()
     p = len(R) - 1
     n = R[0].shape[0]
 
@@ -104,35 +106,39 @@ def whittle_lev_durb(R):
     A[0] = np.eye(n)
     A_bar[0] = np.eye(n)
 
-    V = np.zeros((p + 1, n, n))  # Forward error variance
-    Delta = np.zeros((p + 1, n, n))  # Reflection coefficients
+    Sigma = np.zeros((p + 1, n, n))  # Forward error variance
+    Gamma = np.zeros((p + 1, n, n))  # Reflection coefficients
+    Gamma[0] = A[0]
 
-    for tau in range(p + 1):
-        Delta[tau] = np.zeros((n, n))  # Forward reflection coefficients
-        Delta_bar = np.zeros((n, n))  # Backward reflection coefficients
-        V_bar = np.zeros((n, n))  # Backward error variance
+    Sigma[0] = R[0]
+    Sigma_bar = R[0]
 
-        for s in range(tau + 1):
-            V[tau] = V[tau] + A[s] @ R[s].T
-            Delta[tau] = Delta[tau] + A[s] @ R[tau - s + 1]
+    for k in range(p):
+        Gamma[k] = np.zeros((n, n))
+        Gamma_bar = np.zeros((n, n))
 
-            V_bar = V_bar + A_bar[s] @ R[s]
-            Delta_bar = Delta_bar + A_bar[s] @ R[tau - s + 1].T
+        for tau in range(k + 1):
+            Gamma[k] = Gamma[k] + A[tau] @ R[k - tau + 1]
+            Gamma_bar = Gamma_bar + A_bar[tau] @ R[k - tau + 1].T
 
         A_cpy = np.copy(A)
         A_bar_cpy = np.copy(A_bar)
 
-        # TODO: Use solve and the Hermitian PSD property of V
-        A_cpy[tau + 1] = -Delta[tau] @ np.linalg.inv(V_bar)
-        A_bar_cpy[tau + 1] = -Delta_bar[tau] @ np.linalg.inv(V[tau])
+        # TODO: Use cholesky and cho_solve
+        A_cpy[k + 1] = -Gamma[k] @ linalg.inv(Sigma_bar)
+        A_bar_cpy[k + 1] = -Gamma_bar @ linalg.inv(Sigma[k])
 
-        for s in range(1, tau + 1):
-            A_cpy[s] = A[s] + A_cpy[tau + 1] @ A_bar[tau - s + 1]
-            A_bar_cpy[s] = A_bar[s] + A_bar_cpy[tau + 1] @ A[tau - s + 1]
+        for tau in range(1, k + 1):
+            A_cpy[tau] = A[tau] + A_cpy[k + 1] @ A_bar[k - tau + 1]
+            A_bar_cpy[tau] = A_bar[tau] + A_bar_cpy[k + 1] @ A[k - tau + 1]
 
         A = np.copy(A_cpy)
         A_bar = np.copy(A_bar_cpy)
-    return A, Delta, V
+
+        Sigma[k + 1] = Sigma[k] + A[k + 1] @ Gamma_bar
+        Sigma_bar = Sigma_bar + A_bar[k + 1] @ Gamma[k]
+
+    return A, Gamma, Sigma
 
 
 def compute_covariance(X, p_max):
@@ -164,10 +170,10 @@ def yule_walker(A, R):
 
     YW = np.zeros((p + 1, n, n))
 
-    for s in range(p + 1):
+    for k in range(p + 1):
         for tau in range(p + 1):
-            if s - tau >= 0:
-                YW[s] += A[tau] @ R[s - tau]
+            if k - tau >= 0:
+                YW[k] += A[tau] @ R[k - tau]
             else:
-                YW[s] += A[s] @ R[tau - s].T
+                YW[k] += A[tau] @ R[tau - k].T
     return YW
