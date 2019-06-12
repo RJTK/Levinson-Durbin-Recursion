@@ -26,7 +26,7 @@ essentially summarizing content from
 
 It will be seen that the algorithm itself provides deep insights into
 the structure of autoregressive time series models, and provides an
-indispensible algorithm in practice.}
+indispensable algorithm in practice.}
 
 \tableofcontents
 \listoftodos
@@ -50,7 +50,7 @@ $VAR(p)$ time series models
 where one can estimate $A$ and then simply drop $A(0) = I$ and take $B = -A$.
 
 If we observe only $x(t)$, how do we determine $A(\tau)$?  An answer
-is provided by the Levinson-Durbin recrusion.  This algorithm is
+is provided by the Levinson-Durbin recursion.  This algorithm is
 extremely efficient as it allows one to fit a sequence of $VAR(p)$
 models for every $p = 1, \ldots, p_{\text{max}}$ all for the cost of
 inverting a single toeplitz (or block-toeplitz) matrix.  This implies
@@ -223,7 +223,6 @@ sequence $\Sigma_0, \ldots, \Sigma_p$ of error variance matrices where
 
 Keeping in mind that $R(-\tau) = R(\tau)^{\mathsf{H}}$, we have
 
-\todo{Improve step for $\Sigma_{k + 1}$}
 \begin{algorithm}
   \SetKwInOut{Input}{input}
   \SetKwInOut{Output}{output}
@@ -247,7 +246,7 @@ Keeping in mind that $R(-\tau) = R(\tau)^{\mathsf{H}}$, we have
     $\bar{\Gamma} = \sum_{\tau = 0}^k\bar{A}_k(\tau)R(\tau - k - 1)$\\
 
     \BlankLine
-    $A_{k + 1}(k + 1) = -\Gamma \bar{\Sigma}_k^{-1}$ \texttt{\# Use cholesky' and 'cho\_solve' to invert}\\
+    $A_{k + 1}(k + 1) = -\Gamma \bar{\Sigma}_k^{-1}$ \texttt{\# Use 'cholesky' and 'cho\_solve' to invert}\\
     $\bar{A}_{k + 1}(k + 1) = -\bar{\Gamma} \Sigma_k^{-1}$\\
 
     \BlankLine
@@ -256,9 +255,8 @@ Keeping in mind that $R(-\tau) = R(\tau)^{\mathsf{H}}$, we have
       $A_{k + 1}(\tau) = A_k(\tau) + A_{k + 1}(k + 1) \bar{A}_k(k - \tau + 1)$ \texttt{\# Copy to next array}\\
       $\bar{A}_{k + 1}(\tau) = \bar{A}_k(\tau) + \bar{A}_{k + 1}(k + 1) A_k(k - \tau + 1)$\\
     }
-    $\Sigma_{k + 1} = \sum_{\tau = 0}^{k + 1}A_{k + 1}(\tau)R(-\tau)$\\
-    $\bar{\Sigma}_{k + 1} = \sum_{\tau = 0}^{k + 1}\bar{A}_{k + 1}(\tau)R(\tau)$\\
-
+    $\Sigma_{k + 1} = \Sigma_k + A_{k + 1}(k + 1) \bar{\Gamma}$ \texttt{\# Update the error variance}\\
+    $\bar{\Sigma}_{k + 1} = \bar{\Sigma}_k + \bar{A}_{k + 1}(k + 1) \Gamma$\\
     \BlankLine
     $\mathbf{B}_{k + 1} = \big(-A_{k + 1}(1), \ldots, -A_{k + 1}(k + 1) \big)$ \texttt{\# Convert to VAR coefficients}\\
 
@@ -271,7 +269,31 @@ Keeping in mind that $R(-\tau) = R(\tau)^{\mathsf{H}}$, we have
   \Return{$\big(\mathbf{B}_1, \ldots, \mathbf{B}_p\big)$, $(\Sigma_0, \ldots, \Sigma_p)$}
 \end{algorithm}
 
-\section{Efficient Model Order Selectio}
-\todo{BIC Criteria}
-\todo{Implementation via WLD}
+\section{Efficient Model Order Selection}
+Given a collection of data, there are a variety of methods to choose
+the filter order $p$.  For example, the Bayesian Information Criteria
+(BIC) provides a ``meta-optimization'' objective which trades off
+between error reduction and model complexity.  Choosing $p$ by the
+BIC criterion dictates that we maximize over $p$ the following:
+
+\begin{equation}
+  \label{eqn:bic}
+    BIC(p) = -(T - p - 1) \ln \tr \Sigma_p - n^2p\ln T.\\
+\end{equation}
+
+This can be carried out by a simple direct search on each model order
+between $1$ and some prescribed $p_\text{max}$.  In practice it is
+sufficient to pick $p_\text{max}$ ad-hoc or via some simple heuristic
+(e.g. plotting the sequence $BIC(p)$ over $p$).  Conveniently, the
+Levinson-Durbin algorithm provides to us the sequence of error
+matrices $\Sigma_p$ all in one go, so choosing $p$ by this criteria
+takes time equivalent to simply fitting a single $VAR(p_{\text{max}})$
+model.
+
+It must finally be pointed out that this is not a perfect strategy for
+model order selection, and is likely only useful when $n$ is quite
+small; it is merely one that is efficiently facilitated by the LD
+algorithm.  One can in principle make use of the same $BIC$ criterion
+to further search for sparse matrices that provide a good fit for the
+data, but this becomes a much different problem.
 \end{document}
