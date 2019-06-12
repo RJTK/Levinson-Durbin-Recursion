@@ -107,19 +107,10 @@ def whittle_lev_durb(R):
     V = np.zeros((p + 1, n, n))  # Forward error variance
     Delta = np.zeros((p + 1, n, n))  # Reflection coefficients
 
-    for tau in range(p + 1):
+    for tau in range(p):
         Delta[tau] = np.zeros((n, n))  # Forward reflection coefficients
         Delta_bar = np.zeros((n, n))  # Backward reflection coefficients
         V_bar = np.zeros((n, n))  # Backward error variance
-
-        # TODO: ----------------- Remove this --------------------
-        if tau >= 1:
-            from test_levinson_durbin import assert_solves_yule_walker
-            assert_solves_yule_walker(A[:tau + 1], R[:tau + 1])
-            # assert_solves_yule_walker(A_bar[:tau + 1],
-            #                           [RT.T for RT in R[:tau + 1]])
-
-        # TODO: ----------------- Remove this --------------------
 
         for s in range(tau + 1):
             V[tau] = V[tau] + A[s] @ R[s].T

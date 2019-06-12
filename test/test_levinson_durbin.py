@@ -3,9 +3,12 @@ import numpy as np
 import scipy.linalg as linalg
 
 from levinson import lev_durb, whittle_lev_durb
-from .util import (block_toeplitz, system_rho,
-                   is_stable)
-
+try:
+    from .util import (block_toeplitz, system_rho,
+                       is_stable)
+except ModuleNotFoundError:  # When debugging interactively
+    from util import (block_toeplitz, system_rho,
+                       is_stable)
 
 class TestUtil(unittest.TestCase):
     rand_mat = lambda s: np.random.normal(size=(2, 2))
@@ -324,19 +327,3 @@ def rand_cov_seq(T, p, n=1):
     return r
 
 
-def assert_solves_yule_walker(A, R):
-    """
-    Check sum_{tau = 0}^p A[tau] @ R[s - tau] = 0 for each s = 1 to p
-    """
-    p = len(A)
-    n = A.shape[1]
-    for tau in range(1, p + 1):
-        K_check = np.zeros((n, n))
-        for s in range(p):
-            print(tau - s - 1, s)
-            if tau - s - 1 >= 0:
-                K_check += A[s] @ R[tau - s - 1]
-            else:
-                K_check += A[s] @ R[s - tau + 1].T
-        np.testing.assert_almost_equal(K_check, np.zeros((n, n)))
-    return

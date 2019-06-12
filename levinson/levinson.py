@@ -147,3 +147,27 @@ def compute_covariance(X, p_max):
          for tau in range(1, p + 1)],
         axis=0)
     return R
+
+
+def yule_walker(A, R):
+    """
+    Computes YW(A, R)(s) = sum_{tau = 0}^p A(tau) R(s - tau) for s = 0, ..., p
+    We should have YW(A, R)(0) = V and YW(A, R)(s) = 0 for s != 0.
+
+    p = len(A) - 1
+    """
+    p = len(A) - 1
+    try:
+        n = A.shape[1]
+    except IndexError:
+        n = 1
+
+    YW = np.zeros((p + 1, n, n))
+
+    for s in range(p + 1):
+        for tau in range(p + 1):
+            if s - tau >= 0:
+                YW[s] += A[tau] @ R[s - tau]
+            else:
+                YW[s] += A[s] @ R[tau - s].T
+    return YW
