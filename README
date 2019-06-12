@@ -6,7 +6,7 @@ These algorithms are fundamental for stationary time series analysis.
 
 In particular, suppose we have samples x(t) for t = 1, ..., T of a
 vector wide-sense stationary time series where x(t) lives in R^n.
-After estimating the autocovariance at lags 0 through p + 1, We
+After estimating the autocovariance at lags 0 through p, We
 facilitate estimating `p` all-pole models of orders 1, 2, ..., p and
 returning the error achieved all for the cost of solving a single
 linear np x np hermitian-toeplitz system (i.e. O(n^2 p^2) time).  This
