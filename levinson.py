@@ -112,6 +112,15 @@ def whittle_lev_durb(R):
         Delta_bar = np.zeros((n, n))  # Backward reflection coefficients
         V_bar = np.zeros((n, n))  # Backward error variance
 
+        # TODO: ----------------- Remove this --------------------
+        if tau >= 1:
+            from test_levinson_durbin import assert_solves_yule_walker
+            assert_solves_yule_walker(A[:tau + 1], R[:tau + 1])
+            # assert_solves_yule_walker(A_bar[:tau + 1],
+            #                           [RT.T for RT in R[:tau + 1]])
+
+        # TODO: ----------------- Remove this --------------------
+
         for s in range(tau + 1):
             V[tau] = V[tau] + A[s] @ R[s].T
             Delta[tau] = Delta[tau] + A[s] @ R[tau - s + 1]
@@ -133,17 +142,3 @@ def whittle_lev_durb(R):
         A = np.copy(A_cpy)
         A_bar = np.copy(A_bar_cpy)
     return A, Delta, V
-
-
-def compute_covariance(X, p_max):
-    """
-    Estimates covariances of X and returns an n x n x p_max array.
-    The covariance sequence is guaranteed to be positive semidefinite.
-    """
-    T = X.shape[0]
-    R = np.stack(
-        [X.T @ X / T] +
-        [X[tau:, :].T @ X[: -tau, :] / T
-         for tau in range(1, p + 1)],
-         axis=0)
-    return R

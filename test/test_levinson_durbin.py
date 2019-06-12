@@ -3,8 +3,8 @@ import numpy as np
 import scipy.linalg as linalg
 
 from levinson import lev_durb, whittle_lev_durb
-from util import (block_toeplitz, system_rho,
-                  is_stable)
+from .util import (block_toeplitz, system_rho,
+                   is_stable)
 
 
 class TestUtil(unittest.TestCase):
