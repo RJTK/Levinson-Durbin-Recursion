@@ -150,7 +150,7 @@ def compute_covariance(X, p_max):
     R = np.stack(
         [X.T @ X / T] +
         [X[tau:, :].T @ X[: -tau, :] / T
-         for tau in range(1, p + 1)],
+         for tau in range(1, p_max + 1)],
         axis=0)
     return R
 
