@@ -5,7 +5,7 @@ particularly the Block Toeplitz versions of Whittle and Akaike.
 
 import numpy as np
 import numba
-from scipy import linalg
+from numpy import linalg
 
 
 @numba.jit(nopython=True, cache=False)
