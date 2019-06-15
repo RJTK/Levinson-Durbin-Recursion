@@ -152,7 +152,7 @@ def whittle_lev_durb(R):
     return A, Delta, V
 
 
-# @numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True)
 def reflection_coefs(Delta, Delta_bar, Sigma, Sigma_bar):
     """
     Calculates the reflection coefficients
