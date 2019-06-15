@@ -71,7 +71,7 @@ def lev_durb(r):
     return a, G, eps
 
 
-# @numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True)
 def whittle_lev_durb(R):
     """
     Comsumes a length p + 1 vector R = [R(0), ..., R(p)] of n x n
