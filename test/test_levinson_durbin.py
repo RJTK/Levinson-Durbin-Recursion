@@ -323,16 +323,16 @@ class TestStepUp(unittest.TestCase):
         n = 3
         d = 0.9
         Delta = np.stack([get_mat(n)
-            for tau in range(p + 1)], 0)
+                          for tau in range(p + 1)], 0)
         Delta[0] = np.eye(n)
 
-        # det_max = np.max(np.abs(linalg.det(Delta)))
-        # Delta[1:] = Delta[1:] * (d / det_max)**(1. / n)
-        # Delta_bar = np.moveaxis(Delta, 1, 2)
-
-        ev_max = np.max(np.abs(linalg.eigvals(Delta)))
-        Delta[1:] = Delta[1:] * (d / ev_max)
+        det_max = np.max(np.abs(linalg.det(Delta)))
+        Delta[1:] = Delta[1:] * (d / det_max)**(1. / n)
         Delta_bar = np.moveaxis(Delta, 1, 2)
+
+        # ev_max = np.max(np.abs(linalg.eigvals(Delta)))
+        # Delta[1:] = Delta[1:] * (d / ev_max)
+        # Delta_bar = np.moveaxis(Delta, 1, 2)
 
         V = np.zeros((p + 1, n, n))
         V[0] = get_cov(n)
@@ -373,6 +373,7 @@ class TestStepUp(unittest.TestCase):
             np.testing.assert_almost_equal(A_bar, A_bar_su)
         return
 
+    @unittest.skip("Don't need to use this")
     def test003(self):
         for _ in range(20):
             G, G_bar = self._make_refl_coefs()
