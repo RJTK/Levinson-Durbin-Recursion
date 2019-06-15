@@ -8,7 +8,7 @@ import numba
 from numpy import linalg
 
 
-@numba.jit(nopython=True, cache=False)
+@numba.jit(nopython=True, cache=True)
 def lev_durb(r):
     """
     Comsumes a length p + 1 vector r = [r(0), ..., r(p)] and returns
@@ -86,29 +86,30 @@ def _whittle_lev_durb(R):
     Sigma = np.zeros((p + 1, n, n))  # Forward error variance
     Sigma_bar = np.zeros((p + 1, n, n))  # Backward error variance
 
-    Gamma = np.zeros((p + 1, n, n))  # (Partial) Reflection coefficients
-    Gamma_bar = np.zeros((p + 1, n, n))
-    Gamma[0] = A[0]
-    Gamma_bar[0] = A_bar[0]
+    Delta = np.zeros((p + 1, n, n))  # (Partial) Reflection coefficients
+    Delta_bar = np.zeros((p + 1, n, n))
+    Delta[0] = A[0]
+    Delta_bar[0] = A_bar[0]
 
     Sigma[0] = R[0]
     Sigma_bar[0] = R[0]
 
     for k in range(p):
-        Gamma[k + 1] = np.zeros((n, n))
-        Gamma_bar[k + 1] = np.zeros((n, n))
+        Delta[k + 1] = np.zeros((n, n))
+        Delta_bar[k + 1] = np.zeros((n, n))
 
         for tau in range(k + 1):
-            Gamma[k + 1] = Gamma[k + 1] + A[tau] @ R[k - tau + 1]
-            Gamma_bar[k + 1] = Gamma_bar[k + 1] + A_bar[tau] @ R[k - tau + 1].T
+            Delta[k + 1] = Delta[k + 1] + A[tau] @ R[k - tau + 1]
+            Delta_bar[k + 1] = Delta_bar[k + 1] + A_bar[tau] @ R[k - tau + 1].T
 
         A_cpy = np.copy(A)
         A_bar_cpy = np.copy(A_bar)
 
+        # These are the real reflection coefficients
         A_cpy[k + 1] = -linalg.solve(
-            Sigma_bar[k], Gamma[k + 1].T).T
+            Sigma_bar[k], Delta[k + 1].T).T
         A_bar_cpy[k + 1] = -linalg.solve(
-            Sigma[k], Gamma_bar[k + 1].T).T
+            Sigma[k], Delta_bar[k + 1].T).T
 
         for tau in range(1, k + 1):
             A_cpy[tau] = A[tau] + A_cpy[k + 1] @ A_bar[k - tau + 1]
@@ -117,10 +118,10 @@ def _whittle_lev_durb(R):
         A = np.copy(A_cpy)
         A_bar = np.copy(A_bar_cpy)
 
-        Sigma[k + 1] = Sigma[k] + A[k + 1] @ Gamma_bar[k + 1]
-        Sigma_bar[k + 1] = Sigma_bar[k] + A_bar[k + 1] @ Gamma[k + 1]
+        Sigma[k + 1] = Sigma[k] + A[k + 1] @ Delta_bar[k + 1]
+        Sigma_bar[k + 1] = Sigma_bar[k] + A_bar[k + 1] @ Delta[k + 1]
 
-    return A, A_bar, Gamma, Gamma_bar, Sigma, Sigma_bar
+    return A, A_bar, Delta, Delta_bar, Sigma, Sigma_bar
 
 
 @numba.jit(nopython=True, cache=True)
@@ -151,20 +152,26 @@ def whittle_lev_durb(R):
     return A, Delta, V
 
 
-@numba.jit(nopython=True, cache=True)
-def reflection_coefs(Delta, Delta_bar, V, V_bar):
+# @numba.jit(nopython=True, cache=True)
+def reflection_coefs(Delta, Delta_bar, Sigma, Sigma_bar):
     """
     Calculates the reflection coefficients
 
-    G[tau] = -Delta[tau] @ V_bar[tau]^-1
-    G_bar[tau] = -Delta_bar[tau] @ V[tau]^-1
+    G[tau] = -Delta[tau] @ Sigma_bar[tau]^-1
+    G_bar[tau] = -Delta_bar[tau] @ Sigma[tau]^-1
     """
-    p, n, _ = V.shape
+    p, n, _ = Sigma.shape
     G = np.empty((p, n, n))
     G_bar = np.empty((p, n, n))
-    for tau in range(p + 1):
-        pass
-    return
+
+    G[0] = Sigma[0]
+    G_bar[0] = Sigma_bar[0]
+    for k in range(p - 1):
+        G[k + 1] = -linalg.solve(
+            Sigma_bar[k], Delta[k + 1].T).T
+        G_bar[k + 1] = -linalg.solve(
+            Sigma[k], Delta_bar[k + 1].T).T
+    return G, G_bar
 
 
 @numba.jit(nopython=True, cache=True)
@@ -175,7 +182,29 @@ def step_up(G, G_bar):
     reflection coefficients.  They are enough to characterize
     the whole of the sequence of coefficients.
     """
-    return
+    p = len(G) - 1
+    n = G.shape[1]
+    A = np.empty((p + 1, n, n))
+    A_bar = np.copy(A)  # Backward coeffs
+
+    A[0] = np.eye(n)
+    A_bar[0] = np.eye(n)
+
+    A_cpy = np.copy(A)
+    A_bar_cpy = np.copy(A_bar)
+
+    for k in range(p):
+        A_cpy = np.copy(A)
+        A_bar_cpy = np.copy(A_bar)
+        A_cpy[k + 1] = G[k + 1]
+        A_bar_cpy[k + 1] = G_bar[k + 1]
+
+        for tau in range(1, k + 1):
+            A_cpy[tau] = A[tau] + A_cpy[k + 1] @ A_bar[k - tau + 1]
+            A_bar_cpy[tau] = A_bar[tau] + A_bar_cpy[k + 1] @ A[k - tau + 1]
+        A = np.copy(A_cpy)
+        A_bar = np.copy(A_bar_cpy)
+    return A, A_bar
 
 
 def compute_covariance(X, p_max):

@@ -1,8 +1,12 @@
 import unittest
 import numpy as np
-import scipy.linalg as linalg
+import numpy.linalg as linalg
 
-from levinson import (lev_durb, whittle_lev_durb, yule_walker)
+from scipy.linalg import toeplitz, solve_toeplitz
+
+from levinson.levinson import (lev_durb, whittle_lev_durb,
+                               yule_walker, _whittle_lev_durb,
+                               reflection_coefs, step_up)
 try:
     from .util import (block_toeplitz, system_rho,
                        is_stable)
@@ -11,12 +15,12 @@ except ModuleNotFoundError:  # When debugging interactively
                        is_stable)
 
 class TestUtil(unittest.TestCase):
-    rand_mat = lambda s: np.random.normal(size=(2, 2))
+    rand_mat = lambda: np.random.normal(size=(2, 2))
 
     def test_block_toep001(self):
         c = [-1, 2, 3, 8]
         Rb = block_toeplitz(c)
-        Rs = linalg.toeplitz(c)
+        Rs = toeplitz(c)
         np.testing.assert_array_equal(Rb, Rs)
         return
 
@@ -24,13 +28,13 @@ class TestUtil(unittest.TestCase):
         c = [-1, 2, 3, 8]
         r = [-1, -2.2, -3.8, -8.9]
         Rb = block_toeplitz(c, r)
-        Rs = linalg.toeplitz(c, r)
+        Rs = toeplitz(c, r)
         np.testing.assert_array_equal(Rb, Rs)
         return
 
     def test_block_toep003(self):
-        C = [self.rand_mat(),
-             self.rand_mat() + 1j * self.rand_mat()]
+        C = [TestUtil.rand_mat(),
+             TestUtil.rand_mat() + 1j * TestUtil.rand_mat()]
         T = block_toeplitz(C)
 
         np.testing.assert_array_equal(T[:2, :2], C[0])
@@ -40,9 +44,9 @@ class TestUtil(unittest.TestCase):
         return
 
     def test_block_toep004(self):
-        C = np.array([self.rand_mat(),
-                      self.rand_mat()])
-        R = np.array([C[0], self.rand_mat()])
+        C = np.array([TestUtil.rand_mat(),
+                      TestUtil.rand_mat()])
+        R = np.array([C[0], TestUtil.rand_mat()])
         T = block_toeplitz(C, R)
 
         np.testing.assert_array_equal(T[:2, :2], C[0])
@@ -109,13 +113,13 @@ class TestLevinsonDurbin(unittest.TestCase):
         T = 12
         p = 4
         r = rand_cov_seq(T, p)
-        R = linalg.toeplitz(r)
+        R = toeplitz(r)
 
         u = np.zeros(p)
         u[0] = 1.0
 
         b_solve = linalg.solve(R, u)
-        b_solve_toeplitz = linalg.solve_toeplitz(r, u)
+        b_solve_toeplitz = solve_toeplitz(r, u)
         b_lev_durb, G, eps = lev_durb(r)
         b_lev_durb = b_lev_durb / eps[-1]
 
@@ -136,13 +140,13 @@ class TestLevinsonDurbin(unittest.TestCase):
         T = 1200
         p = 30
         r = rand_cov_seq(T, p)
-        R = linalg.toeplitz(r)
+        R = toeplitz(r)
 
         u = np.zeros(p)
         u[0] = 1.0
 
         b_solve = linalg.solve(R, u)
-        b_solve_toeplitz = linalg.solve_toeplitz(r, u)
+        b_solve_toeplitz = solve_toeplitz(r, u)
         b_lev_durb, G, eps = lev_durb(r)
         b_lev_durb = b_lev_durb / eps[-1]
 
@@ -166,13 +170,13 @@ class TestLevinsonDurbin(unittest.TestCase):
         p = 500
 
         r = rand_cov_seq(T, p)
-        R = linalg.toeplitz(r)
+        R = toeplitz(r)
 
         u = np.zeros(p)
         u[0] = 1.0
 
         b_solve = linalg.solve(R, u)
-        b_solve_toeplitz = linalg.solve_toeplitz(r, u)
+        b_solve_toeplitz = solve_toeplitz(r, u)
         b_lev_durb, G, eps = lev_durb(r)
         b_lev_durb = b_lev_durb / eps[-1]
 
@@ -192,13 +196,13 @@ class TestLevinsonDurbin(unittest.TestCase):
         # We can still solve systems with indefinite inputs
         T = p = 1000
         r = np.random.normal(size=T)
-        R = linalg.toeplitz(r)
+        R = toeplitz(r)
 
         u = np.zeros(p)
         u[0] = 1.0
 
         b_solve = linalg.solve(R, u)
-        b_solve_toeplitz = linalg.solve_toeplitz(r, u)
+        b_solve_toeplitz = solve_toeplitz(r, u)
         b_lev_durb, G, eps = lev_durb(r)
         b_lev_durb = b_lev_durb / eps[-1]
 
@@ -234,7 +238,7 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
 
         A_normed = [A_tau.T @ linalg.inv(S[-1]) for A_tau in A]
         A_normed = np.vstack(A_normed)
-        B = [-A_tau for A_tau in A[1:]]
+        B = A_to_B(A)
         return r, A, A_normed, b_solve, B, S
 
     def test_whittle_block001(self):
@@ -270,8 +274,9 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
 
     def test_whittle_block005(self):
         """Toeplitz Solve"""
-        _, _, A_normed, b_solve, _, _ = self._make_whittle_simple_test()
-        np.testing.assert_almost_equal(A_normed, b_solve)
+        for _ in range(20):
+            _, _, A_normed, b_solve, _, _ = self._make_whittle_simple_test()
+            np.testing.assert_almost_equal(A_normed, b_solve)
         return
 
     def _assert_psd_sequence(self, S):
@@ -294,20 +299,93 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
 
 
 class TestStepUp(unittest.TestCase):
+    def SetUp(self):
+        np.random.seed(0)
+        return
+
+    def _make_refl_coefs(self):
+        def get_mat(n):
+            X = np.random.normal(size=(n, n + 1))
+            Y = np.random.normal(size=(n, n + 1))
+            return X @ Y.T
+
+        def get_cov(n):
+            X = np.random.normal(size=(n, n + 1))
+            return X @ X.T
+
+        def _max_sv(R):
+            return np.max(linalg.svd(R, compute_uv=False))
+
+        def _min_sv(R):
+            return np.min(linalg.svd(R, compute_uv=False))
+
+        p = 3
+        n = 3
+        d = 0.9
+        Delta = np.stack([get_mat(n)
+            for tau in range(p + 1)], 0)
+        Delta[0] = np.eye(n)
+
+        # det_max = np.max(np.abs(linalg.det(Delta)))
+        # Delta[1:] = Delta[1:] * (d / det_max)**(1. / n)
+        # Delta_bar = np.moveaxis(Delta, 1, 2)
+
+        ev_max = np.max(np.abs(linalg.eigvals(Delta)))
+        Delta[1:] = Delta[1:] * (d / ev_max)
+        Delta_bar = np.moveaxis(Delta, 1, 2)
+
+        V = np.zeros((p + 1, n, n))
+        V[0] = get_cov(n)
+        for tau in range(p):
+            R = get_cov(n)
+            R = 0.9 * _min_sv(V[tau]) * R / _max_sv(R)
+            V[tau + 1] = V[tau] - R
+
+        G, G_bar = reflection_coefs(Delta, Delta_bar, V,
+                                    np.moveaxis(V, 1, 2))
+        return G, G_bar
+
     def _make_data(self):
         T = 12
-        p = 3
+        p = 5
         n = 2
         r = rand_cov_seq(T, p, n)
         return r
 
     def test001(self):
-        r = self.make_data()
-        A, A_bar, Delta, Delta_bar, V, V_bar = _whittle_lev_durb(r)
-        G, G_bar = reflection_coefs(Delta, Delta_bar, V, V_bar)
-        A_su, A_bar_su = step_up(G, G_bar)
-        np.testing.assert_almost_equal(A, A_su)
-        np.testing.assert_almost_equal(A_bar, A_bar_su)
+        # Checks some properties of G and delta
+        for _ in range(100):
+            r = self._make_data()
+            _, _, Delta, Delta_bar, V, V_bar = _whittle_lev_durb(r)
+            assert_valid_partial_refl_coefs(Delta, Delta_bar)
+
+            G, G_bar = reflection_coefs(Delta, Delta_bar, V, V_bar)
+            assert_valid_refl_coefs(G, G_bar)
+        return
+
+    def test002(self):
+        for _ in range(20):
+            r = self._make_data()
+            A, A_bar, Delta, Delta_bar, V, V_bar = _whittle_lev_durb(r)
+            G, G_bar = reflection_coefs(Delta, Delta_bar, V, V_bar)
+            A_su, A_bar_su = step_up(G, G_bar)
+            np.testing.assert_almost_equal(A, A_su)
+            np.testing.assert_almost_equal(A_bar, A_bar_su)
+        return
+
+    def test003(self):
+        for _ in range(20):
+            G, G_bar = self._make_refl_coefs()
+            assert_valid_refl_coefs(G, G_bar)
+        return
+
+    @unittest.skip("Need not hold")
+    def test004(self):
+        G, G_bar = self._make_refl_coefs()
+        A, A_bar = step_up(G, G_bar)
+        B, B_bar = A_to_B(A), A_to_B(A_bar)
+        self.assertTrue(is_stable(B))
+        self.assertTrue(is_stable(B_bar))
         return
 
 
@@ -354,3 +432,27 @@ def assert_solves_yule_walker(A, r):
     for k in range(1, p + 1):
         np.testing.assert_almost_equal(YW[k], np.zeros((n, n)))
     return
+
+
+def assert_valid_refl_coefs(G, G_bar):
+    np.testing.assert_array_almost_equal(linalg.det(G),
+                                         linalg.det(G_bar))
+    return
+
+def assert_valid_partial_refl_coefs(Delta, Delta_bar):
+    np.testing.assert_array_almost_equal(
+        Delta, np.moveaxis(Delta_bar, 1, 2))
+
+    np.testing.assert_array_less(linalg.det(Delta)[1:],
+                                 np.ones(len(Delta) - 1))
+    EV = linalg.eigvals(Delta)[1:]
+    EV_bar = linalg.eigvals(Delta_bar)[1:]
+    np.testing.assert_array_almost_equal(EV, EV_bar)
+    # np.testing.assert_array_less(np.abs(EV), np.ones_like(EV))
+    # np.testing.assert_array_less(np.abs(EV_bar), np.ones_like(EV_bar))
+    return
+
+
+def A_to_B(A):
+    B = [-A_tau for A_tau in A[1:]]
+    return B

@@ -2,7 +2,7 @@ from numpy import get_include as np_get_include
 from distutils.core import setup
 from Cython.Build import cythonize
 
-_VERSION = "0.2.2"
+_VERSION = "0.3.0"
 
 with open("README", "r") as readme:
     long_desc = readme.read()
