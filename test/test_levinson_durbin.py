@@ -293,6 +293,24 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
         return
 
 
+class TestStepUp(unittest.TestCase):
+    def _make_data(self):
+        T = 12
+        p = 3
+        n = 2
+        r = rand_cov_seq(T, p, n)
+        return r
+
+    def test001(self):
+        r = self.make_data()
+        A, A_bar, Delta, Delta_bar, V, V_bar = _whittle_lev_durb(r)
+        G, G_bar = reflection_coefs(Delta, Delta_bar, V, V_bar)
+        A_su, A_bar_su = step_up(G, G_bar)
+        np.testing.assert_almost_equal(A, A_su)
+        np.testing.assert_almost_equal(A_bar, A_bar_su)
+        return
+
+
 class TestcLevinsonDurbin(unittest.TestCase):
     @unittest.skip("Not using Cython")
     def basic_test001(self):

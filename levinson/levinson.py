@@ -73,6 +73,57 @@ def lev_durb(r):
 
 
 @numba.jit(nopython=True, cache=True)
+def _whittle_lev_durb(R):
+    p = len(R) - 1
+    n = R[0].shape[0]
+
+    A = np.zeros((p + 1, n, n))
+    A_bar = np.copy(A)  # Backward coeffs
+
+    A[0] = np.eye(n)
+    A_bar[0] = np.eye(n)
+
+    Sigma = np.zeros((p + 1, n, n))  # Forward error variance
+    Sigma_bar = np.zeros((p + 1, n, n))  # Backward error variance
+
+    Gamma = np.zeros((p + 1, n, n))  # (Partial) Reflection coefficients
+    Gamma_bar = np.zeros((p + 1, n, n))
+    Gamma[0] = A[0]
+    Gamma_bar[0] = A_bar[0]
+
+    Sigma[0] = R[0]
+    Sigma_bar[0] = R[0]
+
+    for k in range(p):
+        Gamma[k + 1] = np.zeros((n, n))
+        Gamma_bar[k + 1] = np.zeros((n, n))
+
+        for tau in range(k + 1):
+            Gamma[k + 1] = Gamma[k + 1] + A[tau] @ R[k - tau + 1]
+            Gamma_bar[k + 1] = Gamma_bar[k + 1] + A_bar[tau] @ R[k - tau + 1].T
+
+        A_cpy = np.copy(A)
+        A_bar_cpy = np.copy(A_bar)
+
+        A_cpy[k + 1] = -linalg.solve(
+            Sigma_bar[k], Gamma[k + 1].T).T
+        A_bar_cpy[k + 1] = -linalg.solve(
+            Sigma[k], Gamma_bar[k + 1].T).T
+
+        for tau in range(1, k + 1):
+            A_cpy[tau] = A[tau] + A_cpy[k + 1] @ A_bar[k - tau + 1]
+            A_bar_cpy[tau] = A_bar[tau] + A_bar_cpy[k + 1] @ A[k - tau + 1]
+
+        A = np.copy(A_cpy)
+        A_bar = np.copy(A_bar_cpy)
+
+        Sigma[k + 1] = Sigma[k] + A[k + 1] @ Gamma_bar[k + 1]
+        Sigma_bar[k + 1] = Sigma_bar[k] + A_bar[k + 1] @ Gamma[k + 1]
+
+    return A, A_bar, Gamma, Gamma_bar, Sigma, Sigma_bar
+
+
+@numba.jit(nopython=True, cache=True)
 def whittle_lev_durb(R):
     """
     Comsumes a length p + 1 vector R = [R(0), ..., R(p)] of n x n
@@ -96,49 +147,35 @@ def whittle_lev_durb(R):
     stability property of the scalar version, i.e. det |A(z)| has it's
     zeros within the unit circle.
     """
-    # import pdb; pdb.set_trace()
-    p = len(R) - 1
-    n = R[0].shape[0]
+    A, _, Delta, _, V, _ = _whittle_lev_durb(R)
+    return A, Delta, V
 
-    A = np.zeros((p + 1, n, n))
-    A_bar = np.copy(A)  # Backward coeffs
 
-    A[0] = np.eye(n)
-    A_bar[0] = np.eye(n)
+@numba.jit(nopython=True, cache=True)
+def reflection_coefs(Delta, Delta_bar, V, V_bar):
+    """
+    Calculates the reflection coefficients
 
-    Sigma = np.zeros((p + 1, n, n))  # Forward error variance
-    Gamma = np.zeros((p + 1, n, n))  # Reflection coefficients
-    Gamma[0] = A[0]
+    G[tau] = -Delta[tau] @ V_bar[tau]^-1
+    G_bar[tau] = -Delta_bar[tau] @ V[tau]^-1
+    """
+    p, n, _ = V.shape
+    G = np.empty((p, n, n))
+    G_bar = np.empty((p, n, n))
+    for tau in range(p + 1):
+        pass
+    return
 
-    Sigma[0] = R[0]
-    Sigma_bar = R[0]
 
-    for k in range(p):
-        Gamma[k + 1] = np.zeros((n, n))
-        Gamma_bar = np.zeros((n, n))
-
-        for tau in range(k + 1):
-            Gamma[k + 1] = Gamma[k + 1] + A[tau] @ R[k - tau + 1]
-            Gamma_bar = Gamma_bar + A_bar[tau] @ R[k - tau + 1].T
-
-        A_cpy = np.copy(A)
-        A_bar_cpy = np.copy(A_bar)
-
-        # TODO: Use cholesky and cho_solve
-        A_cpy[k + 1] = -Gamma[k + 1] @ linalg.inv(Sigma_bar)
-        A_bar_cpy[k + 1] = -Gamma_bar @ linalg.inv(Sigma[k])
-
-        for tau in range(1, k + 1):
-            A_cpy[tau] = A[tau] + A_cpy[k + 1] @ A_bar[k - tau + 1]
-            A_bar_cpy[tau] = A_bar[tau] + A_bar_cpy[k + 1] @ A[k - tau + 1]
-
-        A = np.copy(A_cpy)
-        A_bar = np.copy(A_bar_cpy)
-
-        Sigma[k + 1] = Sigma[k] + A[k + 1] @ Gamma_bar
-        Sigma_bar = Sigma_bar + A_bar[k + 1] @ Gamma[k + 1]
-
-    return A, Gamma, Sigma
+@numba.jit(nopython=True, cache=True)
+def step_up(G, G_bar):
+    """
+    The coefficients A_p(p) are particularly important for the
+    levinson durbin recursion and are often referred to as
+    reflection coefficients.  They are enough to characterize
+    the whole of the sequence of coefficients.
+    """
+    return
 
 
 def compute_covariance(X, p_max):
