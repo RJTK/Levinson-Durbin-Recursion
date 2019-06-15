@@ -7,7 +7,7 @@ import numpy as np
 import numba
 
 
-@numba.jit(nopython=True, cache=False)
+@numba.jit(nopython=True, cache=True)
 def lev_durb(r):
     """
     Comsumes a length p + 1 vector r = [r(0), ..., r(p)] and returns
