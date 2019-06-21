@@ -175,6 +175,36 @@ def reflection_coefs(Delta, Delta_bar, Sigma, Sigma_bar):
 
 
 @numba.jit(nopython=True, cache=True)
+def partial_autocovariance(R):
+    """
+    Obtains the partial autocovariance sequence from the WLD recursion
+    """
+    _, _, _, Delta_bar, _, _ = _whittle_lev_durb(R)
+    return Delta_bar
+
+
+# @numba.jit(nopython=True, cache=True)
+def fit_model_ret_plac(R):
+    """
+    A function which returns the coefficients B for a VAR(p) model
+    as well as the sequence of partialautocorrelation matrices.
+
+    Essentially this was crafted entirely to construct some particular
+    LASSO weights.
+    """
+    A, _, _, Delta_bar, V, V_bar = _whittle_lev_durb(R)
+    p = len(R) - 1
+
+    Wplac = np.empty_like(Delta_bar)
+    for k in range(p + 1):
+        S_bar = 1. / np.sqrt(np.diag(V_bar[k]))
+        S = 1. / np.sqrt(np.diag(V[k]))
+        Wplac[k] = S_bar[:, None] * Delta_bar[k] * S[None, :]
+    B = A_to_B(A)
+    return B, Wplac
+
+
+@numba.jit(nopython=True, cache=True)
 def step_up(G, G_bar):
     """
     The coefficients A_p(p) are particularly important for the
@@ -243,3 +273,18 @@ def yule_walker(A, R):
             else:
                 YW[k] += A[tau] @ R[tau - k].T
     return YW
+
+
+@numba.jit(nopython=True, cache=True)
+def A_to_B(A):
+    p = len(A) - 1
+    n = A.shape[1]
+    B = np.empty((p, n, n))
+    for tau in range(p):
+        B[tau] = -A[tau + 1]
+    return B
+
+
+# def A_to_B(A):
+#     B = [-A_tau for A_tau in A[1:]]
+#     return B
