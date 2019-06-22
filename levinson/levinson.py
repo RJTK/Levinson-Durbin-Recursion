@@ -183,7 +183,7 @@ def partial_autocovariance(R):
     return Delta_bar
 
 
-# @numba.jit(nopython=True, cache=True)
+@numba.jit(nopython=True, cache=True)
 def fit_model_ret_plac(R):
     """
     A function which returns the coefficients B for a VAR(p) model
@@ -199,7 +199,9 @@ def fit_model_ret_plac(R):
     for k in range(p + 1):
         S_bar = 1. / np.sqrt(np.diag(V_bar[k]))
         S = 1. / np.sqrt(np.diag(V[k]))
-        Wplac[k] = S_bar[:, None] * Delta_bar[k] * S[None, :]
+        # Wplac[k] = S_bar[:, None] * Delta_bar[k] * S[None, :]  # no numba
+        Wplac[k] = S_bar.reshape((-1, 1)) * Delta_bar[k]
+        Wplac[k] = Wplac[k] * S.reshape((1, -1))
     B = A_to_B(A)
     return B, Wplac
 
@@ -283,8 +285,3 @@ def A_to_B(A):
     for tau in range(p):
         B[tau] = -A[tau + 1]
     return B
-
-
-# def A_to_B(A):
-#     B = [-A_tau for A_tau in A[1:]]
-#     return B
