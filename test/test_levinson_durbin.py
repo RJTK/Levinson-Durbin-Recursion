@@ -7,7 +7,7 @@ from scipy.linalg import toeplitz, solve_toeplitz
 from levinson.levinson import (lev_durb, whittle_lev_durb,
                                yule_walker, _whittle_lev_durb,
                                reflection_coefs, step_up,
-                               A_to_B)
+                               A_to_B, B_to_A)
 try:
     from .util import (block_toeplitz, system_rho,
                        is_stable)
@@ -278,6 +278,14 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
         for _ in range(20):
             _, _, A_normed, b_solve, _, _ = self._make_whittle_simple_test()
             np.testing.assert_almost_equal(A_normed, b_solve)
+        return
+
+    def test_A_to_B(self):
+        for _ in range(20):
+            r, A, _, _, _, S = self._make_whittle_simple_test()
+            B = A_to_B(A)
+            A_cycled = B_to_A(B)
+            np.testing.assert_almost_equal(A, A_cycled)
         return
 
     def _assert_psd_sequence(self, S):

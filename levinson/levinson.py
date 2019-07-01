@@ -287,6 +287,17 @@ def A_to_B(A):
     return B
 
 
+@numba.jit(nopython=True, cache=True)
+def B_to_A(B):
+    p = len(B)
+    n = B.shape[1]
+    A = np.empty((p + 1, n, n))
+    A[0] = np.eye(n)
+    for tau in range(1, p + 1):
+        A[tau] = -B[tau - 1]
+    return A
+
+
 # def A_to_B(A):
 #     B = [-A_tau for A_tau in A[1:]]
 #     return B
