@@ -6,7 +6,8 @@ from scipy.linalg import toeplitz, solve_toeplitz
 
 from levinson.levinson import (lev_durb, whittle_lev_durb,
                                yule_walker, _whittle_lev_durb,
-                               reflection_coefs, step_up)
+                               reflection_coefs, step_up,
+                               A_to_B)
 try:
     from .util import (block_toeplitz, system_rho,
                        is_stable)
@@ -452,8 +453,3 @@ def assert_valid_partial_refl_coefs(Delta, Delta_bar):
     # np.testing.assert_array_less(np.abs(EV), np.ones_like(EV))
     # np.testing.assert_array_less(np.abs(EV_bar), np.ones_like(EV_bar))
     return
-
-
-def A_to_B(A):
-    B = [-A_tau for A_tau in A[1:]]
-    return B

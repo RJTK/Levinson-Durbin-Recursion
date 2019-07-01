@@ -132,9 +132,9 @@ model is given by $\sigma_k^2$
 \todo{Double check results for $\sigma_k^2$}
 \begin{equation}
   \begin{aligned}
-    \widehat{x}(t) &= \sum_{\tau = 0}^k b_k(\tau) x(t - \tau),\\
-    \sigma_k^2 &= \frac{1}{T}\sum_{t = 1}^T (x(t) - \widehat{x}(t))^2\\
-    &= \E(x(t) - \widehat{x}(t))^2 + O\big(\frac{1}{\sqrt{T}}\big).
+    \widehat{x}_k(t) &= \sum_{\tau = 1}^k b_k(\tau) x(t - \tau),\\
+    \sigma_k^2 &= \frac{1}{T}\sum_{t = 1}^T (x(t) - \widehat{x}_k(t))^2\\
+    &= \E(x(t) - \widehat{x}_k(t))^2 + O\big(\frac{1}{\sqrt{T}}\big).
   \end{aligned}
 \end{equation}
 
@@ -215,9 +215,9 @@ sequence $\Sigma_0, \ldots, \Sigma_p$ of error variance matrices where
 \todo{Double check results for $\Sigma_k$}
 \begin{equation}
   \begin{aligned}
-    \widehat{x}(t) &= \sum_{\tau = 1}^p B(\tau)x(t - \tau),\\
-    \Sigma_v &= \frac{1}{T} \sum_{t = 1}^T (x(t) - \widehat{x}(t))(x(t) - \widehat{x}(t))^\T\\
-    &= \E[(x(t) - \widehat{x}(t))(x(t) - \widehat{x}(t))^\T] + O\big(\frac{1}{\sqrt{T}}\big).
+    \widehat{x}_k(t) &= \sum_{\tau = 1}^k B_k(\tau)x(t - \tau),\\
+    \Sigma_k &= \frac{1}{T} \sum_{t = 1}^T (x(t) - \widehat{x}_k(t))(x(t) - \widehat{x}_k(t))^\T\\
+    &= \E[(x(t) - \widehat{x}_k(t))(x(t) - \widehat{x}_k(t))^\T] + O\big(\frac{1}{\sqrt{T}}\big).
   \end{aligned}
 \end{equation}
 
