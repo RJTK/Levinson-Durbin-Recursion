@@ -12,7 +12,7 @@ try:
                        is_stable)
 except ModuleNotFoundError:  # When debugging interactively
     from util import (block_toeplitz, system_rho,
-                       is_stable)
+                      is_stable)
 
 class TestUtil(unittest.TestCase):
     rand_mat = lambda: np.random.normal(size=(2, 2))
