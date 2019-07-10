@@ -8,7 +8,7 @@ from levinson.levinson import (lev_durb, whittle_lev_durb,
                                yule_walker, _whittle_lev_durb,
                                reflection_coefs, step_up,
                                A_to_B, fit_model_ret_plac,
-                               system_rho, is_stable)
+                               system_rho, is_stable, B_to_A)
 try:
     from .util import (block_toeplitz)
 except ModuleNotFoundError:  # When debugging interactively
@@ -299,8 +299,6 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
             _, P = fit_model_ret_plac(r)
             self.assertTrue(is_cov_sequence(P))
         return
-
-    def _assert_all_psd(self, S):
 
     def test_A_to_B(self):
         for _ in range(20):
