@@ -308,6 +308,15 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
             np.testing.assert_almost_equal(A, A_cycled)
         return
 
+    def _assert_all_psd(self, S):
+        try:
+            for tau in range(len(S)):
+                linalg.cholesky(S[tau])
+        except linalg.LinAlgError:
+            self.fail("S[{}] is not positive definite!"
+                      "".format(tau))
+        return
+
     def _assert_psd_sequence(self, S):
         try:
             for tau in range(len(S)):
