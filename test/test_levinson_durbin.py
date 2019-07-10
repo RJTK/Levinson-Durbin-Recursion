@@ -7,13 +7,13 @@ from scipy.linalg import toeplitz, solve_toeplitz
 from levinson.levinson import (lev_durb, whittle_lev_durb,
                                yule_walker, _whittle_lev_durb,
                                reflection_coefs, step_up,
-                               A_to_B)
+                               A_to_B, fit_model_ret_plac,
+                               system_rho, is_stable)
 try:
-    from .util import (block_toeplitz, system_rho,
-                       is_stable)
+    from .util import (block_toeplitz)
 except ModuleNotFoundError:  # When debugging interactively
-    from util import (block_toeplitz, system_rho,
-                       is_stable)
+    from util import (block_toeplitz)
+
 
 class TestUtil(unittest.TestCase):
     rand_mat = lambda: np.random.normal(size=(2, 2))
@@ -60,22 +60,27 @@ class TestUtil(unittest.TestCase):
         """Univariate Covariance Sequences"""
         # Ensure we are actually producing PSD covariances
         p = 15
-        try:
-            for _ in range(1000):
-                rand_cov_seq(p + 1, p, 1)
-        except linalg.LinAlgError:
-            self.fail("Non-PSD Matrix!")
+        for _ in range(1000):
+            r = rand_cov_seq(p + 1, p, 1)
+            self.assertTrue(is_cov_sequence(r), "Non-PSD Sequence!")
         return
 
     def test_cov_seq002(self):
         """Multivariate Covariance Sequences"""
         n = 5
         p = 15
-        try:
-            for _ in range(500):
-                rand_cov_seq(p * n + 1, p, n)
-        except linalg.LinAlgError:
-            self.fail("Non-PSD Matrix!")
+        for _ in range(500):
+            r = rand_cov_seq(p * n + 1, p, n)
+            self.assertTrue(is_cov_sequence(r), "Non-PSD Sequence!")
+        return
+
+    def test_is_cov_sequence(self):
+        r = np.random.normal(size=20)
+        self.assertFalse(is_cov_sequence(r))
+
+        r = np.random.normal(size=(20, 5, 5))
+        self.assertFalse(is_cov_sequence(r))
+        return
 
 
 class TestLevinsonDurbin(unittest.TestCase):
@@ -223,9 +228,9 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
         return
 
     def _make_whittle_simple_test(self):
-        T = 12
-        p = 3
-        n = 2
+        T = 120
+        p = 8
+        n = 10
         r = rand_cov_seq(T, p, n)
         R = block_toeplitz([r[k].T for k in range(p)])
 
@@ -263,7 +268,7 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
         """Error PSD"""
         for _ in range(50):
             _, _, _, _, _, S = self._make_whittle_simple_test()
-            self._assert_psd_sequence(S)
+            self._assert_all_psd(S)
         return
 
     def test_whittle_block004(self):
@@ -280,7 +285,21 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
             np.testing.assert_almost_equal(A_normed, b_solve)
         return
 
-    def _assert_psd_sequence(self, S):
+    def test_whittle_block006(self):
+        """Check PLAC is COV sequence -- is it???"""
+        # TODO: Is this actually even true?
+        # TODO: Go back and look at math, I might have just guessed
+        # TODO: this should hold without checking...
+        T = 120
+        p = 8
+        n = 10
+        for _ in range(20):
+            r = rand_cov_seq(T, p, n)
+            _, P = fit_model_ret_plac(r)
+            self.assertTrue(is_cov_sequence(P))
+        return
+
+    def _assert_all_psd(self, S):
         try:
             for tau in range(len(S)):
                 linalg.cholesky(S[tau])
@@ -417,13 +436,16 @@ def rand_cov_seq(T, p, n=1):
         r = np.array([np.sum([x[t] * x[t - tau]
                               for t in range(tau, T)])
                       for tau in range(p)]) / T
+    return r
 
+
+def is_cov_sequence(r):
     R = block_toeplitz(r)
     try:
         linalg.cholesky(R)
     except linalg.LinAlgError:
-        raise AssertionError("Sequence generated is not PSD!")
-    return r
+        return False
+    return True
 
 
 def assert_solves_yule_walker(A, r):

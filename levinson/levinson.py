@@ -285,3 +285,38 @@ def A_to_B(A):
     for tau in range(p):
         B[tau] = -A[tau + 1]
     return B
+
+
+def block_companion(B):
+    """
+    Produces a block companion from the matrices B[0], B[1], ... , B[p - 1]
+    [B0, B1, B2, ... Bp-1]
+    [ I,  0,  0, ... 0   ]
+    [ 0,  I,  0, ... 0   ]
+    [ 0,  0,  I, ... 0   ]
+    [ 0,  0, ..., I, 0   ]
+    """
+    p = len(B)
+    B = np.hstack([B[k] for k in range(p)])  # The top row
+    n = B.shape[0]
+
+    I = np.eye(n * (p - 1))
+    Z = np.zeros((n * (p - 1), n))
+    R = np.hstack((I, Z))
+    B = np.vstack((B, R))
+    return B
+
+
+def system_rho(B):
+    """
+    Computes the syste stability coefficient for an all-pole
+    system with coefficient matrices B[0], B[1], ...
+    """
+    C = block_companion(B)
+    ev = linalg.eigvals(C)
+    return max(abs(ev))
+
+
+def is_stable(B):
+    rho = system_rho(B)
+    return rho < 1
