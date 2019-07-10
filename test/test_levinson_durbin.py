@@ -285,6 +285,7 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
             np.testing.assert_almost_equal(A_normed, b_solve)
         return
 
+
     def test_whittle_block006(self):
         """Check PLAC is COV sequence -- is it???"""
         # TODO: Is this actually even true?
@@ -300,6 +301,16 @@ class TestBlockLevinsonDurbin(unittest.TestCase):
         return
 
     def _assert_all_psd(self, S):
+
+    def test_A_to_B(self):
+        for _ in range(20):
+            r, A, _, _, _, S = self._make_whittle_simple_test()
+            B = A_to_B(A)
+            A_cycled = B_to_A(B)
+            np.testing.assert_almost_equal(A, A_cycled)
+        return
+
+    def _assert_psd_sequence(self, S):
         try:
             for tau in range(len(S)):
                 linalg.cholesky(S[tau])

@@ -239,20 +239,21 @@ def step_up(G, G_bar):
     return A, A_bar
 
 
+@numba.jit(nopython=True, cache=True)
 def compute_covariance(X, p_max):
     """
     Estimates covariances of X and returns an n x n x p_max array.
     The covariance sequence is guaranteed to be positive semidefinite.
     """
-    T = X.shape[0]
-    R = np.stack(
-        [X.T @ X / T] +
-        [X[tau:, :].T @ X[: -tau, :] / T
-         for tau in range(1, p_max + 1)],
-        axis=0)
+    T, n = X.shape
+    R = np.empty((p_max + 1, n, n))
+    R[0] = X.T @ X / T
+    for tau in range(1, p_max + 1):
+        R[tau] = X[tau:, :].T @ X[: -tau, :] / T
     return R
 
 
+@numba.jit(nopython=True, cache=True)
 def yule_walker(A, R):
     """
     Computes YW(A, R)(s) = sum_{tau = 0}^p A(tau) R(s - tau) for s = 0, ..., p
@@ -261,10 +262,10 @@ def yule_walker(A, R):
     p = len(A) - 1
     """
     p = len(A) - 1
-    try:
-        n = A.shape[1]
-    except IndexError:
+    if len(A.shape) == 1:
         n = 1
+    else:
+        n = A.shape[1]
 
     YW = np.zeros((p + 1, n, n))
 
